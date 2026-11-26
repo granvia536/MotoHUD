@@ -6,20 +6,18 @@ import android.app.NotificationChannel;
 import android.app.NotificationManager;
 import android.app.PendingIntent;
 import android.app.Service;
-import android.appwidget.AppWidgetManager;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
+import android.content.pm.ServiceInfo;
 import android.location.Location;
 import android.location.LocationListener;
 import android.location.LocationManager;
 import android.os.Build;
 import android.os.IBinder;
-import android.content.pm.ServiceInfo;
 import androidx.core.app.NotificationCompat;
 import androidx.core.content.ContextCompat;
-import java.util.Locale;
 
 public class MotoHudLocationService extends Service implements LocationListener {
     public static final String ACTION_START = "com.granvia536.motohud.START_TRACKING";
@@ -39,16 +37,30 @@ public class MotoHudLocationService extends Service implements LocationListener 
 
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
+        if (!hasAnyLocationPermission()) {
+            stopSelf();
+            return START_NOT_STICKY;
+        }
         startTrackingForeground();
         requestGpsUpdates();
         return START_STICKY;
+    }
+
+    private boolean hasAnyLocationPermission() {
+        boolean fine = ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION)
+            == PackageManager.PERMISSION_GRANTED;
+        boolean coarse = ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION)
+            == PackageManager.PERMISSION_GRANTED;
+        return fine || coarse;
     }
 
     private void startTrackingForeground() {
         Intent openApp = new Intent(this, MainActivity.class);
         openApp.addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP | Intent.FLAG_ACTIVITY_CLEAR_TOP);
         PendingIntent pendingIntent = PendingIntent.getActivity(
-            this, 0, openApp,
+            this,
+            0,
+            openApp,
             PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE
         );
 
@@ -62,21 +74,31 @@ public class MotoHudLocationService extends Service implements LocationListener 
             .setPriority(NotificationCompat.PRIORITY_LOW)
             .build();
 
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-            startForeground(
-                NOTIFICATION_ID,
-                notification,
-                ServiceInfo.FOREGROUND_SERVICE_TYPE_LOCATION
-            );
-        } else {
-            startForeground(NOTIFICATION_ID, notification);
+        try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                startForeground(
+                    NOTIFICATION_ID,
+                    notification,
+                    ServiceInfo.FOREGROUND_SERVICE_TYPE_LOCATION
+                );
+            } else {
+                startForeground(NOTIFICATION_ID, notification);
+            }
+        } catch (SecurityException error) {
+            stopSelf();
+            return;
         }
 
-        getSharedPreferences(PREFS, MODE_PRIVATE).edit().putBoolean("tracking", true).apply();
+        getSharedPreferences(PREFS, MODE_PRIVATE)
+            .edit()
+            .putBoolean("tracking", true)
+            .apply();
         MotoHudWidgetProvider.updateAll(this);
     }
 
     private void requestGpsUpdates() {
+        if (locationManager == null) return;
+
         boolean fine = ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION)
             == PackageManager.PERMISSION_GRANTED;
         boolean coarse = ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION)
@@ -87,23 +109,79 @@ public class MotoHudLocationService extends Service implements LocationListener 
             return;
         }
 
+        boolean requestedAny = false;
+
+        if (fine) {
+            try {
+                if (locationManager.isProviderEnabled(LocationManager.GPS_PROVIDER)) {
+                    Location lastGps = locationManager.getLastKnownLocation(LocationManager.GPS_PROVIDER);
+                    if (lastGps != null && System.currentTimeMillis() - lastGps.getTime() < 15000L) {
+                        onLocationChanged(lastGps);
+                    }
+                    locationManager.requestLocationUpdates(
+                        LocationManager.GPS_PROVIDER,
+                        500L,
+                        0f,
+                        this
+                    );
+                    requestedAny = true;
+                }
+            } catch (Exception ignored) { }
+        }
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            try {
+                if (locationManager.hasProvider(LocationManager.FUSED_PROVIDER)) {
+                    locationManager.requestLocationUpdates(
+                        LocationManager.FUSED_PROVIDER,
+                        1000L,
+                        0f,
+                        this
+                    );
+                    requestedAny = true;
+                }
+            } catch (Exception ignored) { }
+        }
+
         try {
-            if (fine && locationManager.isProviderEnabled(LocationManager.GPS_PROVIDER)) {
-                locationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 1000L, 0f, this);
-            } else {
-                locationManager.requestLocationUpdates(LocationManager.NETWORK_PROVIDER, 2000L, 0f, this);
+            if (locationManager.isProviderEnabled(LocationManager.NETWORK_PROVIDER)) {
+                locationManager.requestLocationUpdates(
+                    LocationManager.NETWORK_PROVIDER,
+                    2000L,
+                    0f,
+                    this
+                );
+                requestedAny = true;
             }
-        } catch (SecurityException error) {
-            stopSelf();
+        } catch (Exception ignored) { }
+
+        if (!requestedAny) {
+            try {
+                locationManager.requestLocationUpdates(
+                    LocationManager.PASSIVE_PROVIDER,
+                    1000L,
+                    0f,
+                    this
+                );
+            } catch (Exception ignored) { }
         }
     }
 
     @Override
     public void onLocationChanged(Location location) {
-        float speed = location.hasSpeed() ? Math.max(0f, location.getSpeed()) : 0f;
-        if (!location.hasSpeed() && lastLocation != null) {
+        if (location == null) return;
+        float speed = 0f;
+        if (location.hasSpeed()) {
+            speed = Math.max(0f, location.getSpeed());
+        } else if (lastLocation != null) {
             long elapsed = location.getTime() - lastLocation.getTime();
-            if (elapsed > 0) speed = lastLocation.distanceTo(location) / (elapsed / 1000f);
+            if (elapsed > 300L && elapsed < 15000L) {
+                float dist = lastLocation.distanceTo(location);
+                float candidate = dist / (elapsed / 1000f);
+                if (candidate <= 95f) {
+                    speed = candidate;
+                }
+            }
         }
         if (speed < 0.35f) {
             speed = 0f;
@@ -115,6 +193,7 @@ public class MotoHudLocationService extends Service implements LocationListener 
             .putFloat("speed_ms", speed)
             .putLong("fix_time", System.currentTimeMillis())
             .putBoolean("tracking", true)
+            .putBoolean("has_fix", true)
             .apply();
 
         MotoHudWidgetProvider.updateAll(this);
@@ -122,13 +201,17 @@ public class MotoHudLocationService extends Service implements LocationListener 
 
     @Override
     public void onProviderDisabled(String provider) {
-        SharedPreferences prefs = getSharedPreferences(PREFS, MODE_PRIVATE);
-        prefs.edit().putFloat("speed_ms", 0f).apply();
-        MotoHudWidgetProvider.updateAll(this);
+        if (LocationManager.GPS_PROVIDER.equals(provider)) {
+            SharedPreferences prefs = getSharedPreferences(PREFS, MODE_PRIVATE);
+            prefs.edit().putFloat("speed_ms", 0f).apply();
+            MotoHudWidgetProvider.updateAll(this);
+        }
     }
 
     @Override
-    public void onProviderEnabled(String provider) { }
+    public void onProviderEnabled(String provider) {
+        requestGpsUpdates();
+    }
 
     @Override
     public void onStatusChanged(String provider, int status, android.os.Bundle extras) { }
@@ -136,7 +219,9 @@ public class MotoHudLocationService extends Service implements LocationListener 
     private void createNotificationChannel() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             NotificationChannel channel = new NotificationChannel(
-                CHANNEL_ID, "MotoHUD ride tracking", NotificationManager.IMPORTANCE_LOW
+                CHANNEL_ID,
+                "MotoHUD ride tracking",
+                NotificationManager.IMPORTANCE_LOW
             );
             channel.setDescription("Keeps GPS speed available to the MotoHUD home-screen widget.");
             NotificationManager manager = getSystemService(NotificationManager.class);
@@ -147,10 +232,14 @@ public class MotoHudLocationService extends Service implements LocationListener 
     @Override
     public void onDestroy() {
         if (locationManager != null) {
-            try { locationManager.removeUpdates(this); } catch (SecurityException ignored) { }
+            try {
+                locationManager.removeUpdates(this);
+            } catch (Exception ignored) { }
         }
-        getSharedPreferences(PREFS, MODE_PRIVATE).edit()
+        getSharedPreferences(PREFS, MODE_PRIVATE)
+            .edit()
             .putBoolean("tracking", false)
+            .putBoolean("has_fix", false)
             .putFloat("speed_ms", 0f)
             .apply();
         MotoHudWidgetProvider.updateAll(this);

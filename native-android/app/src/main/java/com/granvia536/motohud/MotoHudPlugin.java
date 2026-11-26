@@ -4,6 +4,7 @@ import android.Manifest;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.os.Build;
+import com.getcapacitor.JSObject;
 import com.getcapacitor.PermissionState;
 import com.getcapacitor.Plugin;
 import com.getcapacitor.PluginCall;
@@ -11,7 +12,6 @@ import com.getcapacitor.PluginMethod;
 import com.getcapacitor.annotation.CapacitorPlugin;
 import com.getcapacitor.annotation.Permission;
 import com.getcapacitor.annotation.PermissionCallback;
-import com.getcapacitor.JSObject;
 
 @CapacitorPlugin(
     name = "MotoHud",
@@ -35,6 +35,27 @@ public class MotoHudPlugin extends Plugin {
             return;
         }
         startService(call);
+    }
+
+    @PluginMethod
+    public void startIfPermitted(PluginCall call) {
+        boolean granted = getPermissionState("location") == PermissionState.GRANTED;
+        if (granted) {
+            try {
+                Intent intent = new Intent(getContext(), MotoHudLocationService.class);
+                intent.setAction(MotoHudLocationService.ACTION_START);
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                    getContext().startForegroundService(intent);
+                } else {
+                    getContext().startService(intent);
+                }
+            } catch (Exception ignored) {
+                granted = false;
+            }
+        }
+        JSObject result = new JSObject();
+        result.put("active", granted);
+        call.resolve(result);
     }
 
     @PermissionCallback

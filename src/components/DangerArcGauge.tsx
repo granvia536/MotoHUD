@@ -13,10 +13,11 @@ interface DangerArcGaugeProps {
   onToggleUnit: (unit: SpeedUnit) => void;
   zone: DangerZone;
   isSimulated: boolean;
+  onOpenControls: () => void;
 }
 
-const MAX_KMH = 180;
-const SEGMENT_COUNT = 36;
+const MAX_KMH = 120;
+const SEGMENT_COUNT = 24;
 
 function getZoneForKmh(kmh: number): DangerZone {
   for (let i = DANGER_ZONES.length - 1; i >= 0; i--) {
@@ -33,6 +34,7 @@ export const DangerArcGauge: React.FC<DangerArcGaugeProps> = ({
   onToggleUnit,
   zone,
   isSimulated,
+  onOpenControls,
 }) => {
   const currentKmh = Math.max(0, speedMs * 3.6);
   const displayValue = Math.round(msToUnit(speedMs, unit));
@@ -41,19 +43,18 @@ export const DangerArcGauge: React.FC<DangerArcGaugeProps> = ({
     currentKmh < 0.8 ? 0 : Math.max(1, Math.round(clampedRatio * SEGMENT_COUNT));
 
   const scaleMarks =
-    unit === 'kmh'
-      ? [0, 30, 60, 90, 120, 150, 180]
-      : [0, 20, 40, 60, 80, 100, 112];
+    unit === 'kmh' ? [0, 30, 60, 90, 120] : [0, 15, 30, 45, 60, 75];
 
-  const isHighDanger = zone.id === 'high' || zone.id === 'severe' || zone.id === 'lethal';
+  const isHighDanger =
+    zone.id === 'high' || zone.id === 'severe' || zone.id === 'lethal';
   const isLethal = zone.id === 'lethal';
 
   return (
-    <div className="w-full h-full flex flex-col items-center justify-between sm:justify-center gap-3 sm:gap-5 select-none">
-      {/* Full-Width Superbike Segmented Speed-Danger Tach Bar */}
-      <div className="w-full max-w-2xl px-1">
+    <div className="w-full h-full flex flex-col items-center justify-between gap-4 select-none">
+      {/* Top Segmented Speed-Danger Bar (0 to 120 km/h) */}
+      <div className="w-full max-w-2xl px-1 pt-1">
         <div
-          className="grid gap-[3px] sm:gap-1 items-end h-10 sm:h-14"
+          className="grid gap-[4px] sm:gap-1.5 items-end h-11 sm:h-14"
           style={{ gridTemplateColumns: `repeat(${SEGMENT_COUNT}, minmax(0, 1fr))` }}
           role="img"
           aria-label={`Speed gauge at ${displayValue} ${unitLabel(unit)}, ${zone.label}`}
@@ -62,19 +63,18 @@ export const DangerArcGauge: React.FC<DangerArcGaugeProps> = ({
             const segKmh = ((idx + 1) / SEGMENT_COUNT) * MAX_KMH;
             const segZone = getZoneForKmh(segKmh);
             const isLit = idx < activeSegments;
-            // Gentle superbike curve: taller bars toward the right/high-speed end
             const heightPct = 52 + (idx / (SEGMENT_COUNT - 1)) * 48;
 
             return (
               <div
                 key={idx}
-                className="w-full rounded-[2px] transition-opacity duration-100"
+                className="w-full rounded-[3px] transition-opacity duration-100"
                 style={{
                   height: `${heightPct}%`,
                   backgroundColor: isLit ? segZone.accentHex : '#1C1E26',
-                  opacity: isLit ? 1 : 0.7,
+                  opacity: isLit ? 1 : 0.75,
                   boxShadow:
-                    isLit && idx >= activeSegments - 3
+                    isLit && idx >= activeSegments - 2
                       ? `0 0 12px ${segZone.glowRgba}`
                       : 'none',
                 }}
@@ -84,11 +84,11 @@ export const DangerArcGauge: React.FC<DangerArcGaugeProps> = ({
         </div>
 
         {/* Scale numerals aligned under the segmented bar */}
-        <div className="flex items-center justify-between mt-1.5 px-0.5">
+        <div className="flex items-center justify-between mt-2 px-0.5">
           {scaleMarks.map((val) => (
             <span
               key={val}
-              className="font-mono text-[11px] sm:text-xs font-medium tabular-nums text-zinc-500"
+              className="font-mono text-xs sm:text-sm font-medium tabular-nums text-zinc-400"
             >
               {val}
             </span>
@@ -97,42 +97,42 @@ export const DangerArcGauge: React.FC<DangerArcGaugeProps> = ({
       </div>
 
       {/* MASSIVE Center Digital Speedometer Readout */}
-      <div className="flex-1 w-full flex flex-col items-center justify-center min-h-0 py-1">
+      <div className="flex-1 w-full flex flex-col items-center justify-center min-h-0">
         {isSimulated && (
-          <span className="text-xs font-semibold tracking-wider uppercase text-amber-400 mb-1">
-            Simulation Mode
+          <span className="text-xs font-semibold tracking-wider uppercase text-amber-400 mb-2">
+            Simulation
           </span>
         )}
 
-        <div className="flex flex-col items-center justify-center w-full">
-          <div
-            className="font-display font-bold tabular-nums leading-[0.82] tracking-[-0.03em] text-center transition-colors duration-150"
-            style={{
-              fontSize: 'clamp(7.5rem, min(46vw, 40vh), 20rem)',
-              color: '#FFFFFF',
-              textShadow: isHighDanger
-                ? `0 0 56px ${zone.glowRgba}, 0 4px 24px rgba(0,0,0,0.65)`
-                : '0 4px 24px rgba(0,0,0,0.5)',
-            }}
-          >
-            {displayValue}
-          </div>
-
-          <button
-            type="button"
-            onClick={() => onToggleUnit(unit === 'kmh' ? 'mph' : 'kmh')}
-            className="mt-1 sm:mt-2 min-h-[44px] px-5 rounded-xl bg-zinc-900/80 hover:bg-zinc-800 border border-zinc-800/90 font-display text-xl sm:text-2xl font-semibold tracking-wide text-zinc-300 hover:text-white transition-colors cursor-pointer"
-            aria-label={`Speed unit ${unitLabel(unit)}, tap to switch`}
-            title="Tap to switch km/h or mph"
-          >
-            {unitLabel(unit)}
-          </button>
+        <div
+          className="font-display font-bold tabular-nums leading-[0.82] tracking-[-0.03em] text-center transition-colors duration-150"
+          style={{
+            fontSize: 'clamp(9.5rem, min(52vw, 44vh), 22rem)',
+            color: '#FFFFFF',
+            textShadow: isHighDanger
+              ? `0 0 56px ${zone.glowRgba}, 0 4px 24px rgba(0,0,0,0.65)`
+              : '0 4px 24px rgba(0,0,0,0.5)',
+          }}
+        >
+          {displayValue}
         </div>
+
+        <button
+          type="button"
+          onClick={() => onToggleUnit(unit === 'kmh' ? 'mph' : 'kmh')}
+          className="mt-3 sm:mt-4 min-h-[44px] px-6 rounded-xl bg-zinc-900/85 hover:bg-zinc-800 border border-zinc-800/90 font-display text-2xl sm:text-3xl font-semibold tracking-wide text-zinc-200 hover:text-white transition-colors cursor-pointer"
+          aria-label={`Speed unit ${unitLabel(unit)}, tap to switch`}
+          title="Tap to switch km/h or mph"
+        >
+          {unitLabel(unit)}
+        </button>
       </div>
 
-      {/* High-Visibility Full-Width Danger-by-Speed Banner */}
-      <div
-        className={`w-full max-w-2xl rounded-2xl px-4 py-3 sm:py-3.5 border transition-colors duration-200 ${
+      {/* Bottom Danger-by-Speed Banner (tap to open Guide & Controls) */}
+      <button
+        type="button"
+        onClick={onOpenControls}
+        className={`w-full max-w-2xl rounded-2xl px-4 sm:px-5 py-3.5 sm:py-4 border transition-colors duration-200 cursor-pointer text-left ${
           isLethal ? 'animate-pulse' : ''
         }`}
         style={{
@@ -148,11 +148,12 @@ export const DangerArcGauge: React.FC<DangerArcGaugeProps> = ({
               : 'rgba(220, 38, 38, 0.42)',
           borderColor: zone.accentHex,
         }}
+        aria-label={`Danger zone ${zone.label}. Tap for speed guide and settings.`}
       >
         <div className="flex items-center justify-between gap-3">
-          <div className="flex items-center gap-2.5 min-w-0">
+          <div className="flex items-center gap-3 min-w-0">
             <span
-              className="w-3.5 h-3.5 rounded-sm shrink-0"
+              className="w-4 h-4 rounded-[4px] shrink-0"
               style={{ backgroundColor: zone.accentHex }}
               aria-hidden="true"
             />
@@ -164,7 +165,7 @@ export const DangerArcGauge: React.FC<DangerArcGaugeProps> = ({
               {zone.label}
             </span>
           </div>
-          <span className="font-mono text-xs sm:text-sm font-bold tabular-nums text-zinc-100 whitespace-nowrap shrink-0">
+          <span className="font-mono text-sm sm:text-base font-bold tabular-nums text-zinc-100 whitespace-nowrap shrink-0">
             {zone.maxKmh === null
               ? `${Math.round(msToUnit(zone.minKmh / 3.6, unit))}+ ${unitLabel(unit)}`
               : `${Math.round(msToUnit(zone.minKmh / 3.6, unit))}–${Math.round(
@@ -172,10 +173,7 @@ export const DangerArcGauge: React.FC<DangerArcGaugeProps> = ({
                 )} ${unitLabel(unit)}`}
           </span>
         </div>
-        <p className="text-xs sm:text-sm text-zinc-100 mt-1 font-medium leading-snug">
-          {zone.shortWarning}
-        </p>
-      </div>
+      </button>
     </div>
   );
 };

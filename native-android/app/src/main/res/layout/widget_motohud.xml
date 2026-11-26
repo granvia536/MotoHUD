@@ -4,106 +4,185 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:orientation="vertical"
+    android:padding="14dp"
     android:background="@drawable/widget_motohud_background">
 
-    <FrameLayout
-        android:id="@+id/widget_top_bar"
-        android:layout_width="match_parent"
-        android:layout_height="8dp"
-        android:background="#10B981" />
-
+    <!-- 24-segment rising speed-danger bar (0 to 120 km/h) -->
     <LinearLayout
         android:layout_width="match_parent"
-        android:layout_height="match_parent"
-        android:orientation="vertical"
+        android:layout_height="36dp"
+        android:gravity="bottom"
+        android:orientation="horizontal">
+
+        <TextView android:id="@+id/widget_bar_0" android:layout_width="0dp" android:layout_height="18dp" android:layout_weight="1" android:layout_marginEnd="2dp" android:background="#1C1E26" />
+        <TextView android:id="@+id/widget_bar_1" android:layout_width="0dp" android:layout_height="19dp" android:layout_weight="1" android:layout_marginEnd="2dp" android:background="#1C1E26" />
+        <TextView android:id="@+id/widget_bar_2" android:layout_width="0dp" android:layout_height="20dp" android:layout_weight="1" android:layout_marginEnd="2dp" android:background="#1C1E26" />
+        <TextView android:id="@+id/widget_bar_3" android:layout_width="0dp" android:layout_height="20dp" android:layout_weight="1" android:layout_marginEnd="2dp" android:background="#1C1E26" />
+        <TextView android:id="@+id/widget_bar_4" android:layout_width="0dp" android:layout_height="21dp" android:layout_weight="1" android:layout_marginEnd="2dp" android:background="#1C1E26" />
+        <TextView android:id="@+id/widget_bar_5" android:layout_width="0dp" android:layout_height="22dp" android:layout_weight="1" android:layout_marginEnd="2dp" android:background="#1C1E26" />
+        <TextView android:id="@+id/widget_bar_6" android:layout_width="0dp" android:layout_height="23dp" android:layout_weight="1" android:layout_marginEnd="2dp" android:background="#1C1E26" />
+        <TextView android:id="@+id/widget_bar_7" android:layout_width="0dp" android:layout_height="23dp" android:layout_weight="1" android:layout_marginEnd="2dp" android:background="#1C1E26" />
+        <TextView android:id="@+id/widget_bar_8" android:layout_width="0dp" android:layout_height="24dp" android:layout_weight="1" android:layout_marginEnd="2dp" android:background="#1C1E26" />
+        <TextView android:id="@+id/widget_bar_9" android:layout_width="0dp" android:layout_height="25dp" android:layout_weight="1" android:layout_marginEnd="2dp" android:background="#1C1E26" />
+        <TextView android:id="@+id/widget_bar_10" android:layout_width="0dp" android:layout_height="26dp" android:layout_weight="1" android:layout_marginEnd="2dp" android:background="#1C1E26" />
+        <TextView android:id="@+id/widget_bar_11" android:layout_width="0dp" android:layout_height="26dp" android:layout_weight="1" android:layout_marginEnd="2dp" android:background="#1C1E26" />
+        <TextView android:id="@+id/widget_bar_12" android:layout_width="0dp" android:layout_height="27dp" android:layout_weight="1" android:layout_marginEnd="2dp" android:background="#1C1E26" />
+        <TextView android:id="@+id/widget_bar_13" android:layout_width="0dp" android:layout_height="28dp" android:layout_weight="1" android:layout_marginEnd="2dp" android:background="#1C1E26" />
+        <TextView android:id="@+id/widget_bar_14" android:layout_width="0dp" android:layout_height="29dp" android:layout_weight="1" android:layout_marginEnd="2dp" android:background="#1C1E26" />
+        <TextView android:id="@+id/widget_bar_15" android:layout_width="0dp" android:layout_height="30dp" android:layout_weight="1" android:layout_marginEnd="2dp" android:background="#1C1E26" />
+        <TextView android:id="@+id/widget_bar_16" android:layout_width="0dp" android:layout_height="30dp" android:layout_weight="1" android:layout_marginEnd="2dp" android:background="#1C1E26" />
+        <TextView android:id="@+id/widget_bar_17" android:layout_width="0dp" android:layout_height="31dp" android:layout_weight="1" android:layout_marginEnd="2dp" android:background="#1C1E26" />
+        <TextView android:id="@+id/widget_bar_18" android:layout_width="0dp" android:layout_height="32dp" android:layout_weight="1" android:layout_marginEnd="2dp" android:background="#1C1E26" />
+        <TextView android:id="@+id/widget_bar_19" android:layout_width="0dp" android:layout_height="33dp" android:layout_weight="1" android:layout_marginEnd="2dp" android:background="#1C1E26" />
+        <TextView android:id="@+id/widget_bar_20" android:layout_width="0dp" android:layout_height="34dp" android:layout_weight="1" android:layout_marginEnd="2dp" android:background="#1C1E26" />
+        <TextView android:id="@+id/widget_bar_21" android:layout_width="0dp" android:layout_height="34dp" android:layout_weight="1" android:layout_marginEnd="2dp" android:background="#1C1E26" />
+        <TextView android:id="@+id/widget_bar_22" android:layout_width="0dp" android:layout_height="35dp" android:layout_weight="1" android:layout_marginEnd="2dp" android:background="#1C1E26" />
+        <TextView android:id="@+id/widget_bar_23" android:layout_width="0dp" android:layout_height="36dp" android:layout_weight="1" android:background="#1C1E26" />
+    </LinearLayout>
+
+    <!-- Scale labels 0 - 120 -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="4dp"
+        android:orientation="horizontal">
+
+        <TextView
+            android:id="@+id/widget_scale_0"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:gravity="start"
+            android:text="0"
+            android:textColor="#A1A1AA"
+            android:textSize="11sp"
+            android:fontFamily="monospace" />
+
+        <TextView
+            android:id="@+id/widget_scale_1"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:gravity="center"
+            android:text="30"
+            android:textColor="#A1A1AA"
+            android:textSize="11sp"
+            android:fontFamily="monospace" />
+
+        <TextView
+            android:id="@+id/widget_scale_2"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:gravity="center"
+            android:text="60"
+            android:textColor="#A1A1AA"
+            android:textSize="11sp"
+            android:fontFamily="monospace" />
+
+        <TextView
+            android:id="@+id/widget_scale_3"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:gravity="center"
+            android:text="90"
+            android:textColor="#A1A1AA"
+            android:textSize="11sp"
+            android:fontFamily="monospace" />
+
+        <TextView
+            android:id="@+id/widget_scale_4"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:gravity="end"
+            android:text="120"
+            android:textColor="#A1A1AA"
+            android:textSize="11sp"
+            android:fontFamily="monospace" />
+    </LinearLayout>
+
+    <!-- Center giant speedometer & unit -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:gravity="center"
+        android:orientation="vertical">
+
+        <TextView
+            android:id="@+id/widget_speed"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:gravity="center"
+            android:text="0"
+            android:textColor="#FFFFFF"
+            android:textSize="84sp"
+            android:maxLines="1"
+            android:textStyle="bold"
+            android:fontFamily="sans-serif-condensed"
+            android:includeFontPadding="false" />
+
+        <TextView
+            android:id="@+id/widget_unit"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="6dp"
+            android:paddingStart="16dp"
+            android:paddingEnd="16dp"
+            android:paddingTop="5dp"
+            android:paddingBottom="6dp"
+            android:background="@drawable/widget_unit_bg"
+            android:text="km/h"
+            android:textColor="#E4E4E7"
+            android:textSize="15sp"
+            android:textStyle="bold"
+            android:maxLines="1" />
+    </LinearLayout>
+
+    <!-- Bottom danger zone banner matching screenshot -->
+    <LinearLayout
+        android:id="@+id/widget_zone_box"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
         android:paddingStart="14dp"
         android:paddingEnd="14dp"
         android:paddingTop="10dp"
-        android:paddingBottom="12dp">
+        android:paddingBottom="10dp"
+        android:background="@drawable/widget_zone_off">
 
-        <LinearLayout
-            android:layout_width="match_parent"
+        <TextView
+            android:id="@+id/widget_zone_dot"
+            android:layout_width="12dp"
+            android:layout_height="12dp"
+            android:layout_marginEnd="10dp"
+            android:background="#52525B" />
+
+        <TextView
+            android:id="@+id/widget_zone"
+            android:layout_width="0dp"
             android:layout_height="wrap_content"
-            android:gravity="center_vertical"
-            android:orientation="horizontal">
-
-            <TextView
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:text="MotoHUD"
-                android:textColor="#E4E4E7"
-                android:textSize="13sp"
-                android:textStyle="bold"
-                android:letterSpacing="0.06" />
-
-            <TextView
-                android:id="@+id/widget_status"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="GPS OFF"
-                android:textColor="#A1A1AA"
-                android:textSize="11sp"
-                android:textStyle="bold" />
-        </LinearLayout>
-
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="0dp"
             android:layout_weight="1"
-            android:gravity="center"
-            android:orientation="vertical">
+            android:text="URBAN CRAWL"
+            android:textColor="#10B981"
+            android:textSize="16sp"
+            android:textStyle="bold"
+            android:fontFamily="sans-serif-condensed"
+            android:letterSpacing="0.04"
+            android:maxLines="1" />
 
-            <TextView
-                android:id="@+id/widget_speed"
-                android:layout_width="match_parent"
-                android:layout_height="0dp"
-                android:layout_weight="1"
-                android:gravity="center"
-                android:text="—"
-                android:textColor="#FFFFFF"
-                android:textSize="76sp"
-                android:autoSizeTextType="uniform"
-                android:autoSizeMinTextSize="40sp"
-                android:autoSizeMaxTextSize="180sp"
-                android:autoSizeStepGranularity="4sp"
-                android:maxLines="1"
-                android:textStyle="bold"
-                android:fontFamily="sans-serif-condensed"
-                android:includeFontPadding="false" />
-
-            <TextView
-                android:id="@+id/widget_unit"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="km/h"
-                android:textColor="#D4D4D8"
-                android:textSize="14sp"
-                android:textStyle="bold"
-                android:paddingBottom="4dp" />
-        </LinearLayout>
-
-        <FrameLayout
-            android:id="@+id/widget_zone_box"
-            android:layout_width="match_parent"
+        <TextView
+            android:id="@+id/widget_zone_range"
+            android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:paddingStart="10dp"
-            android:paddingEnd="10dp"
-            android:paddingTop="6dp"
-            android:paddingBottom="6dp"
-            android:background="#27272A">
-
-            <TextView
-                android:id="@+id/widget_zone"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:gravity="center"
-                android:text="TAP TO START GPS"
-                android:textColor="#FFFFFF"
-                android:textSize="13sp"
-                android:textStyle="bold"
-                android:letterSpacing="0.06"
-                android:maxLines="1" />
-        </FrameLayout>
+            android:text="TAP FOR GPS"
+            android:textColor="#F4F4F5"
+            android:textSize="12sp"
+            android:textStyle="bold"
+            android:fontFamily="monospace"
+            android:maxLines="1" />
     </LinearLayout>
 </LinearLayout>
