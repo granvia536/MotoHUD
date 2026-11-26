@@ -88,7 +88,7 @@ jobs:
                   root_end = text.find('>', root_start)
                   if root_start < 0 or root_end < 0:
                       raise SystemExit("Could not locate manifest root")
-                  text = text[:root_end + 1] + '\\n' + permission + text[root_end + 1:]
+                  text = text[:root_end + 1] + '\n' + permission + text[root_end + 1:]
 
           application_marker = '<application'
           app_start = text.find(application_marker)
