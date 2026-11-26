@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
+import { Capacitor, registerPlugin } from '@capacitor/core';
 import {
   Maximize2,
   Minimize2,
@@ -26,6 +27,15 @@ import {
 
 const UNIT_STORAGE_KEY = 'motospeed_unit_pref';
 
+interface MotoHudNativePlugin {
+  startTracking(): Promise<void>;
+  stopTracking(): Promise<void>;
+  isTracking(): Promise<{ active: boolean }>;
+  setUnit(options: { unit: SpeedUnit }): Promise<void>;
+}
+
+const MotoHudNative = registerPlugin<MotoHudNativePlugin>('MotoHud');
+
 export default function App() {
   const [unit, setUnit] = useState<SpeedUnit>(() => {
     try {
@@ -40,11 +50,38 @@ export default function App() {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [isSimulated, setIsSimulated] = useState(false);
   const [simSpeedKmh, setSimSpeedKmh] = useState(64);
+  const [nativeTrackingActive, setNativeTrackingActive] = useState(false);
+  const isAndroidApp = Capacitor.getPlatform() === 'android';
 
   const gps = useGpsSpeed();
 
+  useEffect(() => {
+    if (!isAndroidApp) return;
+    MotoHudNative.isTracking()
+      .then(({ active }) => setNativeTrackingActive(active))
+      .catch(() => setNativeTrackingActive(false));
+    void MotoHudNative.setUnit({ unit });
+  }, [isAndroidApp]);
+
+  const toggleNativeTracking = async () => {
+    try {
+      if (nativeTrackingActive) {
+        await MotoHudNative.stopTracking();
+        setNativeTrackingActive(false);
+      } else {
+        await MotoHudNative.startTracking();
+        setNativeTrackingActive(true);
+      }
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : 'Unable to change GPS tracking.';
+      window.alert(message);
+    }
+  };
+
   const handleToggleUnit = (nextUnit: SpeedUnit) => {
     setUnit(nextUnit);
+    if (isAndroidApp) void MotoHudNative.setUnit({ unit: nextUnit }).catch(() => {});
     try {
       localStorage.setItem(UNIT_STORAGE_KEY, nextUnit);
     } catch {
@@ -458,9 +495,23 @@ export default function App() {
           </button>
 
           <div className="flex items-center gap-2">
+            {isAndroidApp && (
+              <button
+                type="button"
+                onClick={toggleNativeTracking}
+                className={`min-h-[44px] px-3 rounded-xl text-xs sm:text-sm font-semibold transition-colors whitespace-nowrap shrink-0 cursor-pointer ${
+                  nativeTrackingActive
+                    ? 'bg-emerald-500/15 border border-emerald-500/40 text-emerald-300'
+                    : 'bg-emerald-500 text-zinc-950 hover:bg-emerald-400'
+                }`}
+                title="Keeps the home-screen widget updated while MotoHUD is closed"
+              >
+                {nativeTrackingActive ? 'Stop Ride' : 'Start Ride'}
+              </button>
+            )}
             <button
               type="button"
-              onClick={() => setIsSimulated((prev) => !prev)}
+              onClick={() => setIsSimulated((prev) => !prev)
               className={`min-h-[44px] px-3.5 rounded-xl text-xs sm:text-sm font-semibold transition-colors whitespace-nowrap shrink-0 cursor-pointer ${
                 isSimulated
                   ? 'bg-amber-400 text-zinc-950 hover:bg-amber-300'
