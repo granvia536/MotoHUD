@@ -511,7 +511,7 @@ export default function App() {
             )}
             <button
               type="button"
-              onClick={() => setIsSimulated((prev) => !prev)
+              onClick={() => setIsSimulated((prev) => !prev)}
               className={`min-h-[44px] px-3.5 rounded-xl text-xs sm:text-sm font-semibold transition-colors whitespace-nowrap shrink-0 cursor-pointer ${
                 isSimulated
                   ? 'bg-amber-400 text-zinc-950 hover:bg-amber-300'
