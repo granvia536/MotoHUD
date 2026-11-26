@@ -104,8 +104,7 @@ jobs:
                   <receiver
                       android:name="com.granvia536.motohud.MotoHudWidgetProvider"
                       android:exported="true"
-                      android:label="MotoHUD Widget"
-                      android:permission="android.permission.BIND_APPWIDGET">
+                      android:label="MotoHUD Widget">
                       <intent-filter>
                           <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
                       </intent-filter>

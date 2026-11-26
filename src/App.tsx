@@ -51,6 +51,7 @@ export default function App() {
   const [isSimulated, setIsSimulated] = useState(false);
   const [simSpeedKmh, setSimSpeedKmh] = useState(64);
   const [nativeTrackingActive, setNativeTrackingActive] = useState(false);
+  const [nativeError, setNativeError] = useState<string | null>(null);
   const isAndroidApp = Capacitor.getPlatform() === 'android';
 
   const gps = useGpsSpeed();
@@ -64,6 +65,7 @@ export default function App() {
   }, [isAndroidApp]);
 
   const toggleNativeTracking = async () => {
+    setNativeError(null);
     try {
       if (nativeTrackingActive) {
         await MotoHudNative.stopTracking();
@@ -75,7 +77,7 @@ export default function App() {
     } catch (error) {
       const message =
         error instanceof Error ? error.message : 'Unable to change GPS tracking.';
-      window.alert(message);
+      setNativeError(message);
     }
   };
 
@@ -252,6 +254,22 @@ export default function App() {
       </header>
 
       {/* Non-blocking GPS permission / signal notice */}
+      {nativeError && (
+        <div className="relative z-20 mx-3 sm:mx-6 mt-2 px-3 py-2 rounded-xl bg-zinc-900/95 border border-red-500/40 flex items-center justify-between gap-2 shrink-0">
+          <div className="flex items-center gap-2 text-xs text-red-200 min-w-0">
+            <AlertTriangle className="w-4 h-4 text-red-400 shrink-0" />
+            <span className="truncate">{nativeError}</span>
+          </div>
+          <button
+            type="button"
+            onClick={() => setNativeError(null)}
+            className="min-h-[36px] px-2.5 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-xs font-semibold text-zinc-100 transition-colors whitespace-nowrap cursor-pointer"
+          >
+            Dismiss
+          </button>
+        </div>
+      )}
+
       {!isSimulated &&
         (gps.status === 'denied' ||
           gps.status === 'unavailable' ||

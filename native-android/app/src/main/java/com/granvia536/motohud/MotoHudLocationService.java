@@ -105,6 +105,9 @@ public class MotoHudLocationService extends Service implements LocationListener 
             long elapsed = location.getTime() - lastLocation.getTime();
             if (elapsed > 0) speed = lastLocation.distanceTo(location) / (elapsed / 1000f);
         }
+        if (speed < 0.35f) {
+            speed = 0f;
+        }
         lastLocation = location;
 
         SharedPreferences prefs = getSharedPreferences(PREFS, MODE_PRIVATE);
