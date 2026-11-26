@@ -57,25 +57,68 @@ jobs:
       - name: Generate Android project
         run: npx cap add android
 
-      - name: Add Android location permissions
+      - name: Add native MotoHUD widget and GPS service
+        shell: bash
+        run: |
+          cp -R native-android/app/src/main/java/. android/app/src/main/java/
+          cp -R native-android/app/src/main/res/. android/app/src/main/res/
+
+      - name: Add Android widget and location declarations
         shell: bash
         run: |
           python3 - <<'PY'
           from pathlib import Path
+
           manifest = Path("android/app/src/main/AndroidManifest.xml")
-          text = manifest.read_text()
-          marker = '<manifest'
-          start = text.find(marker)
-          end = text.find('>', start)
-          if start < 0 or end < 0:
-              raise SystemExit("Could not locate the Android manifest root element")
-          permissions = (
-              '\n    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />'
-              '\n    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />'
-          )
-          if "android.permission.ACCESS_FINE_LOCATION" not in text:
-              text = text[:end + 1] + permissions + text[end + 1:]
-              manifest.write_text(text)
+          text = manifest.read_text(encoding="utf-8")
+
+          permissions = [
+              '    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />',
+              '    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />',
+              '    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />',
+              '    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_LOCATION" />',
+              '    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />',
+          ]
+          for permission in permissions:
+              name = permission.split('"')[1]
+              if name not in text:
+                  manifest = Path("android/app/src/main/AndroidManifest.xml")
+                  marker = '<manifest'
+                  root_start = text.find(marker)
+                  root_end = text.find('>', root_start)
+                  if root_start < 0 or root_end < 0:
+                      raise SystemExit("Could not locate manifest root")
+                  text = text[:root_end + 1] + '\\n' + permission + text[root_end + 1:]
+
+          application_marker = '<application'
+          app_start = text.find(application_marker)
+          app_end = text.find('>', app_start)
+          if app_start < 0 or app_end < 0:
+              raise SystemExit("Could not locate application element")
+
+          declarations = '''
+                  <service
+                      android:name="com.granvia536.motohud.MotoHudLocationService"
+                      android:exported="false"
+                      android:foregroundServiceType="location" />
+                  <receiver
+                      android:name="com.granvia536.motohud.MotoHudWidgetProvider"
+                      android:exported="true"
+                      android:label="MotoHUD Widget"
+                      android:permission="android.permission.BIND_APPWIDGET">
+                      <intent-filter>
+                          <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+                      </intent-filter>
+                      <meta-data
+                          android:name="android.appwidget.provider"
+                          android:resource="@xml/widget_motohud_info" />
+                  </receiver>
+          '''
+          if "MotoHudWidgetProvider" not in text:
+              text = text[:app_end + 1] + declarations + text[app_end + 1:]
+
+          manifest_path = Path("android/app/src/main/AndroidManifest.xml")
+          manifest_path.write_text(text, encoding="utf-8")
           PY
 
       - name: Sync Capacitor Android project
