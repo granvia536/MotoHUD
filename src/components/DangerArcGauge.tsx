@@ -16,46 +16,15 @@ interface DangerArcGaugeProps {
 }
 
 const MAX_KMH = 180;
-const START_ANGLE = -125;
-const END_ANGLE = 125;
-const TOTAL_SWEEP = END_ANGLE - START_ANGLE;
+const SEGMENT_COUNT = 36;
 
-function polarToCartesian(cx: number, cy: number, r: number, angleDeg: number) {
-  const rad = ((angleDeg - 90) * Math.PI) / 180;
-  return {
-    x: cx + r * Math.cos(rad),
-    y: cy + r * Math.sin(rad),
-  };
-}
-
-function describeArc(
-  cx: number,
-  cy: number,
-  r: number,
-  startAngle: number,
-  endAngle: number
-): string {
-  const start = polarToCartesian(cx, cy, r, endAngle);
-  const end = polarToCartesian(cx, cy, r, startAngle);
-  const largeArcFlag = endAngle - startAngle <= 180 ? '0' : '1';
-  return [
-    'M',
-    start.x.toFixed(2),
-    start.y.toFixed(2),
-    'A',
-    r,
-    r,
-    0,
-    largeArcFlag,
-    0,
-    end.x.toFixed(2),
-    end.y.toFixed(2),
-  ].join(' ');
-}
-
-function kmhToAngle(kmh: number): number {
-  const clamped = Math.max(0, Math.min(MAX_KMH, kmh));
-  return START_ANGLE + (clamped / MAX_KMH) * TOTAL_SWEEP;
+function getZoneForKmh(kmh: number): DangerZone {
+  for (let i = DANGER_ZONES.length - 1; i >= 0; i--) {
+    if (kmh >= DANGER_ZONES[i].minKmh) {
+      return DANGER_ZONES[i];
+    }
+  }
+  return DANGER_ZONES[0];
 }
 
 export const DangerArcGauge: React.FC<DangerArcGaugeProps> = ({
@@ -67,206 +36,143 @@ export const DangerArcGauge: React.FC<DangerArcGaugeProps> = ({
 }) => {
   const currentKmh = Math.max(0, speedMs * 3.6);
   const displayValue = Math.round(msToUnit(speedMs, unit));
-  const activeEndAngle = kmhToAngle(currentKmh);
+  const clampedRatio = Math.min(1, currentKmh / MAX_KMH);
+  const activeSegments =
+    currentKmh < 0.8 ? 0 : Math.max(1, Math.round(clampedRatio * SEGMENT_COUNT));
 
-  const cx = 200;
-  const cy = 200;
-  const trackRadius = 164;
-  const zoneBandRadius = 178;
-
-  // Major scale labels aligned to physical speed
-  const majorMarks =
+  const scaleMarks =
     unit === 'kmh'
-      ? [0, 30, 60, 90, 120, 150, 180].map((v) => ({
-          label: String(v),
-          angle: kmhToAngle(v),
-        }))
-      : [0, 20, 40, 60, 80, 100, 110].map((mph) => ({
-          label: String(mph),
-          angle: kmhToAngle(mph * 1.60934),
-        }));
+      ? [0, 30, 60, 90, 120, 150, 180]
+      : [0, 20, 40, 60, 80, 100, 112];
 
-  // Minor ticks every 10 km/h (or 10 mph)
-  const tickValues =
-    unit === 'kmh'
-      ? Array.from({ length: 19 }, (_, i) => i * 10)
-      : Array.from({ length: 12 }, (_, i) => i * 10 * 1.60934);
+  const isHighDanger = zone.id === 'high' || zone.id === 'severe' || zone.id === 'lethal';
+  const isLethal = zone.id === 'lethal';
 
   return (
-    <div className="relative flex flex-col items-center justify-center w-full max-w-[440px] mx-auto select-none">
-      <div className="relative w-full aspect-square max-h-[54vh] min-h-[290px] flex items-center justify-center">
-        <svg
-          viewBox="0 0 400 375"
-          className="w-full h-full overflow-visible"
+    <div className="w-full h-full flex flex-col items-center justify-between sm:justify-center gap-3 sm:gap-5 select-none">
+      {/* Full-Width Superbike Segmented Speed-Danger Tach Bar */}
+      <div className="w-full max-w-2xl px-1">
+        <div
+          className="grid gap-[3px] sm:gap-1 items-end h-10 sm:h-14"
+          style={{ gridTemplateColumns: `repeat(${SEGMENT_COUNT}, minmax(0, 1fr))` }}
           role="img"
-          aria-label={`Current speed ${displayValue} ${unitLabel(unit)}, danger level ${zone.label}`}
+          aria-label={`Speed gauge at ${displayValue} ${unitLabel(unit)}, ${zone.label}`}
         >
-          <defs>
-            <filter id="arc-glow" x="-20%" y="-20%" width="140%" height="140%">
-              <feGaussianBlur stdDeviation="5" result="blur" />
-              <feMerge>
-                <feMergeNode in="blur" />
-                <feMergeNode in="SourceGraphic" />
-              </feMerge>
-            </filter>
-          </defs>
+          {Array.from({ length: SEGMENT_COUNT }, (_, idx) => {
+            const segKmh = ((idx + 1) / SEGMENT_COUNT) * MAX_KMH;
+            const segZone = getZoneForKmh(segKmh);
+            const isLit = idx < activeSegments;
+            // Gentle superbike curve: taller bars toward the right/high-speed end
+            const heightPct = 52 + (idx / (SEGMENT_COUNT - 1)) * 48;
 
-          {/* Outer static danger-zone spectrum band */}
-          {DANGER_ZONES.map((z) => {
-            const zStart = kmhToAngle(z.minKmh);
-            const zEnd = kmhToAngle(z.maxKmh ?? MAX_KMH);
-            const isCurrent = z.id === zone.id;
             return (
-              <path
-                key={z.id}
-                d={describeArc(cx, cy, zoneBandRadius, zStart + 0.8, zEnd - 0.8)}
-                fill="none"
-                stroke={z.accentHex}
-                strokeWidth={isCurrent ? 6 : 3.5}
-                strokeLinecap="butt"
-                strokeOpacity={isCurrent ? 0.95 : 0.25}
-              />
-            );
-          })}
-
-          {/* Main recessed track */}
-          <path
-            d={describeArc(cx, cy, trackRadius, START_ANGLE, END_ANGLE)}
-            fill="none"
-            stroke="#1E2028"
-            strokeWidth={14}
-            strokeLinecap="round"
-          />
-
-          {/* Active speed sweep arc */}
-          {currentKmh > 0.5 && (
-            <path
-              d={describeArc(
-                cx,
-                cy,
-                trackRadius,
-                START_ANGLE,
-                Math.max(START_ANGLE + 1.5, activeEndAngle)
-              )}
-              fill="none"
-              stroke={zone.accentHex}
-              strokeWidth={14}
-              strokeLinecap="round"
-              filter="url(#arc-glow)"
-              style={{ transition: 'stroke 180ms ease-out' }}
-            />
-          )}
-
-          {/* Scale ticks */}
-          {tickValues.map((kmhVal, idx) => {
-            const angle = kmhToAngle(kmhVal);
-            const isMajor = idx % 3 === 0 || unit === 'mph';
-            const outer = polarToCartesian(cx, cy, trackRadius - 14, angle);
-            const inner = polarToCartesian(
-              cx,
-              cy,
-              trackRadius - (isMajor ? 25 : 20),
-              angle
-            );
-            const isPassed = currentKmh >= kmhVal;
-            return (
-              <line
+              <div
                 key={idx}
-                x1={outer.x}
-                y1={outer.y}
-                x2={inner.x}
-                y2={inner.y}
-                stroke={isPassed ? zone.accentHex : '#3F4352'}
-                strokeWidth={isMajor ? 2.5 : 1.5}
-                strokeLinecap="round"
+                className="w-full rounded-[2px] transition-opacity duration-100"
+                style={{
+                  height: `${heightPct}%`,
+                  backgroundColor: isLit ? segZone.accentHex : '#1C1E26',
+                  opacity: isLit ? 1 : 0.7,
+                  boxShadow:
+                    isLit && idx >= activeSegments - 3
+                      ? `0 0 12px ${segZone.glowRgba}`
+                      : 'none',
+                }}
               />
             );
           })}
+        </div>
 
-          {/* Scale numerals */}
-          {majorMarks.map((mark) => {
-            const pos = polarToCartesian(cx, cy, trackRadius - 40, mark.angle);
-            return (
-              <text
-                key={mark.label}
-                x={pos.x}
-                y={pos.y}
-                textAnchor="middle"
-                dominantBaseline="middle"
-                className="fill-zinc-400 font-mono text-[13px] font-medium tabular-nums"
-              >
-                {mark.label}
-              </text>
-            );
-          })}
-        </svg>
-
-        {/* Center digital speed readout */}
-        <div className="absolute inset-0 flex flex-col items-center justify-center pt-5 pointer-events-none">
-          {isSimulated && (
-            <span className="text-[11px] font-medium tracking-wider uppercase text-amber-400 mb-1">
-              Simulation Preview
+        {/* Scale numerals aligned under the segmented bar */}
+        <div className="flex items-center justify-between mt-1.5 px-0.5">
+          {scaleMarks.map((val) => (
+            <span
+              key={val}
+              className="font-mono text-[11px] sm:text-xs font-medium tabular-nums text-zinc-500"
+            >
+              {val}
             </span>
-          )}
+          ))}
+        </div>
+      </div>
+
+      {/* MASSIVE Center Digital Speedometer Readout */}
+      <div className="flex-1 w-full flex flex-col items-center justify-center min-h-0 py-1">
+        {isSimulated && (
+          <span className="text-xs font-semibold tracking-wider uppercase text-amber-400 mb-1">
+            Simulation Mode
+          </span>
+        )}
+
+        <div className="flex flex-col items-center justify-center w-full">
           <div
-            className="font-display font-bold tabular-nums leading-[0.86] tracking-tight transition-colors duration-150"
+            className="font-display font-bold tabular-nums leading-[0.82] tracking-[-0.03em] text-center transition-colors duration-150"
             style={{
-              fontSize: 'clamp(5.25rem, 21vw, 9.25rem)',
-              color: currentKmh >= 86 ? '#FFFFFF' : '#F4F4F5',
-              textShadow:
-                currentKmh >= 56
-                  ? `0 0 42px ${zone.glowRgba}`
-                  : 'none',
+              fontSize: 'clamp(7.5rem, min(46vw, 40vh), 20rem)',
+              color: '#FFFFFF',
+              textShadow: isHighDanger
+                ? `0 0 56px ${zone.glowRgba}, 0 4px 24px rgba(0,0,0,0.65)`
+                : '0 4px 24px rgba(0,0,0,0.5)',
             }}
           >
             {displayValue}
           </div>
 
-          {/* Interactive unit toggle inside the lower center opening */}
-          <div className="pointer-events-auto mt-3 flex items-center bg-zinc-900/90 border border-zinc-800 rounded-lg p-1">
-            <button
-              type="button"
-              onClick={() => onToggleUnit('kmh')}
-              className={`min-h-[38px] px-3.5 text-xs font-semibold rounded-md transition-colors whitespace-nowrap shrink-0 cursor-pointer ${
-                unit === 'kmh'
-                  ? 'bg-zinc-100 text-zinc-950'
-                  : 'text-zinc-400 hover:text-zinc-200'
-              }`}
-              aria-pressed={unit === 'kmh'}
-            >
-              km/h
-            </button>
-            <button
-              type="button"
-              onClick={() => onToggleUnit('mph')}
-              className={`min-h-[38px] px-3.5 text-xs font-semibold rounded-md transition-colors whitespace-nowrap shrink-0 cursor-pointer ${
-                unit === 'mph'
-                  ? 'bg-zinc-100 text-zinc-950'
-                  : 'text-zinc-400 hover:text-zinc-200'
-              }`}
-              aria-pressed={unit === 'mph'}
-            >
-              mph
-            </button>
-          </div>
+          <button
+            type="button"
+            onClick={() => onToggleUnit(unit === 'kmh' ? 'mph' : 'kmh')}
+            className="mt-1 sm:mt-2 min-h-[44px] px-5 rounded-xl bg-zinc-900/80 hover:bg-zinc-800 border border-zinc-800/90 font-display text-xl sm:text-2xl font-semibold tracking-wide text-zinc-300 hover:text-white transition-colors cursor-pointer"
+            aria-label={`Speed unit ${unitLabel(unit)}, tap to switch`}
+            title="Tap to switch km/h or mph"
+          >
+            {unitLabel(unit)}
+          </button>
         </div>
       </div>
 
-      {/* Explicit Danger Status Callout (Color always paired with text label) */}
+      {/* High-Visibility Full-Width Danger-by-Speed Banner */}
       <div
-        className={`w-full mt-1 px-4 py-3 rounded-2xl border transition-colors duration-200 ${zone.surfaceTintClass} ${zone.borderTintClass}`}
+        className={`w-full max-w-2xl rounded-2xl px-4 py-3 sm:py-3.5 border transition-colors duration-200 ${
+          isLethal ? 'animate-pulse' : ''
+        }`}
+        style={{
+          backgroundColor:
+            zone.id === 'safe'
+              ? 'rgba(16, 185, 129, 0.14)'
+              : zone.id === 'caution'
+              ? 'rgba(245, 158, 11, 0.18)'
+              : zone.id === 'high'
+              ? 'rgba(249, 115, 22, 0.22)'
+              : zone.id === 'severe'
+              ? 'rgba(239, 68, 68, 0.28)'
+              : 'rgba(220, 38, 38, 0.42)',
+          borderColor: zone.accentHex,
+        }}
       >
         <div className="flex items-center justify-between gap-3">
-          <span className={`text-lg sm:text-xl font-bold tracking-tight ${zone.textColorClass}`}>
-            {zone.label}
-          </span>
-          <span className="text-xs font-mono tabular-nums text-zinc-300">
+          <div className="flex items-center gap-2.5 min-w-0">
+            <span
+              className="w-3.5 h-3.5 rounded-sm shrink-0"
+              style={{ backgroundColor: zone.accentHex }}
+              aria-hidden="true"
+            />
+            <span
+              className={`font-display text-2xl sm:text-3xl font-bold uppercase tracking-wide truncate ${
+                isLethal ? 'text-white' : zone.textColorClass
+              }`}
+            >
+              {zone.label}
+            </span>
+          </div>
+          <span className="font-mono text-xs sm:text-sm font-bold tabular-nums text-zinc-100 whitespace-nowrap shrink-0">
             {zone.maxKmh === null
               ? `${Math.round(msToUnit(zone.minKmh / 3.6, unit))}+ ${unitLabel(unit)}`
-              : `${Math.round(msToUnit(zone.minKmh / 3.6, unit))}–${Math.round(msToUnit(zone.maxKmh / 3.6, unit))} ${unitLabel(unit)}`}
+              : `${Math.round(msToUnit(zone.minKmh / 3.6, unit))}–${Math.round(
+                  msToUnit(zone.maxKmh / 3.6, unit)
+                )} ${unitLabel(unit)}`}
           </span>
         </div>
-        <p className="text-xs sm:text-sm text-zinc-200 mt-1 leading-snug">
+        <p className="text-xs sm:text-sm text-zinc-100 mt-1 font-medium leading-snug">
           {zone.shortWarning}
         </p>
       </div>

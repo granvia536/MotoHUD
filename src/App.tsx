@@ -68,7 +68,7 @@ export default function App() {
         await document.exitFullscreen();
       }
     } catch {
-      // Gracefully ignore if embedded iframe restricts fullscreen
+      // Gracefully ignore if embedded iframe or WebView restricts fullscreen
     }
   };
 
@@ -87,26 +87,25 @@ export default function App() {
     currentKmh > 1 ? Math.pow(currentKmh / 30, 2) : 0;
 
   const isLethal = activeZone.id === 'lethal';
-  const isSevereOrHigher =
-    activeZone.id === 'severe' || activeZone.id === 'lethal';
+  const isElevatedDanger = activeZone.id !== 'safe';
 
   const gpsSummaryText = (() => {
-    if (isSimulated) return 'Simulation Mode';
+    if (isSimulated) return 'SIM';
     switch (gps.status) {
       case 'active':
         return gps.accuracyMeters !== null
-          ? `GPS Active · ±${gps.accuracyMeters}m`
-          : 'GPS Active';
+          ? `GPS ±${gps.accuracyMeters}m`
+          : 'GPS Live';
       case 'requesting':
-        return 'Acquiring GPS';
+        return 'GPS Lock…';
       case 'timeout':
-        return 'Searching Satellites';
+        return 'GPS Search…';
       case 'denied':
         return 'GPS Denied';
       case 'unavailable':
-        return 'GPS Unavailable';
+        return 'No Signal';
       case 'unsupported':
-        return 'No GPS Hardware';
+        return 'No GPS';
     }
   })();
 
@@ -119,35 +118,35 @@ export default function App() {
   const avgSpeedDisplay = Math.round(msToUnit(gps.avgSpeedMs, unit));
 
   return (
-    <div className="relative min-h-[100dvh] w-full bg-[#090A0D] text-zinc-100 flex flex-col overflow-x-hidden">
+    <div className="relative h-[100dvh] w-full bg-[#090A0D] text-zinc-100 flex flex-col overflow-hidden">
       {/* Full-screen dynamic speed-danger radial atmosphere */}
       <div
         className={`pointer-events-none fixed inset-0 transition-all duration-300 ${
           isLethal ? 'animate-lethal-pulse' : ''
         }`}
         style={{
-          background: `radial-gradient(circle at 50% 42%, ${activeZone.glowRgba} 0%, rgba(9, 10, 13, 0) 68%)`,
+          background: `radial-gradient(circle at 50% 45%, ${activeZone.glowRgba} 0%, rgba(9, 10, 13, 0.92) 72%)`,
         }}
         aria-hidden="true"
       />
 
-      {/* Full-screen peripheral danger frame border when in severe/lethal zone */}
+      {/* Full-screen peripheral danger frame border */}
       <div
         className="pointer-events-none fixed inset-0 transition-opacity duration-200"
         style={{
-          boxShadow: isSevereOrHigher
-            ? `inset 0 0 0 3px ${activeZone.accentHex}`
+          boxShadow: isElevatedDanger
+            ? `inset 0 0 0 ${isLethal ? '6px' : '3px'} ${activeZone.accentHex}`
             : 'inset 0 0 0 0px transparent',
-          opacity: isSevereOrHigher ? (isLethal ? 0.9 : 0.6) : 0,
+          opacity: isElevatedDanger ? (isLethal ? 0.95 : 0.65) : 0,
         }}
         aria-hidden="true"
       />
 
-      {/* Compact Top HUD Bar */}
-      <header className="relative z-20 pt-safe px-4 sm:px-6 h-14 flex items-center justify-between gap-4 border-b border-zinc-800/60 bg-[#090A0D]/75 backdrop-blur-md shrink-0">
-        <div className="flex items-center gap-3 min-w-0">
-          <span className="font-display text-xl font-bold tracking-tight text-zinc-100 whitespace-nowrap shrink-0">
-            MotoSpeed
+      {/* Ultra-compact Top HUD Strip */}
+      <header className="relative z-20 pt-safe px-3 sm:px-6 h-12 flex items-center justify-between gap-2 bg-[#090A0D]/65 backdrop-blur-md border-b border-zinc-800/50 shrink-0">
+        <div className="flex items-center gap-2.5 min-w-0">
+          <span className="font-display text-lg font-bold tracking-tight text-zinc-100 whitespace-nowrap shrink-0">
+            MotoHUD
           </span>
           <span className="text-zinc-700" aria-hidden="true">
             ·
@@ -167,14 +166,14 @@ export default function App() {
           )}
         </div>
 
-        <div className="flex items-center gap-1.5 shrink-0">
+        <div className="flex items-center gap-1 shrink-0">
           {gps.wakeLockSupported && (
             <button
               type="button"
               onClick={gps.toggleWakeLock}
               className={`min-h-[44px] min-w-[44px] px-2.5 flex items-center justify-center gap-1.5 rounded-xl text-xs font-medium transition-colors whitespace-nowrap shrink-0 cursor-pointer ${
                 gps.wakeLockActive
-                  ? 'text-emerald-400 bg-emerald-500/10 hover:bg-emerald-500/15'
+                  ? 'text-emerald-400 hover:bg-emerald-500/10'
                   : 'text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800/70'
               }`}
               title={
@@ -194,7 +193,7 @@ export default function App() {
                 <Unlock className="w-4 h-4" />
               )}
               <span className="hidden sm:inline">
-                {gps.wakeLockActive ? 'Screen Awake' : 'Auto Sleep'}
+                {gps.wakeLockActive ? 'Awake' : 'Sleep'}
               </span>
             </button>
           )}
@@ -220,38 +219,38 @@ export default function App() {
         (gps.status === 'denied' ||
           gps.status === 'unavailable' ||
           gps.status === 'unsupported') && (
-          <div className="relative z-20 mx-4 sm:mx-6 mt-3 px-4 py-2.5 rounded-xl bg-zinc-900/90 border border-zinc-800 flex flex-wrap items-center justify-between gap-3">
-            <div className="flex items-center gap-2.5 text-xs text-zinc-200 min-w-0">
+          <div className="relative z-20 mx-3 sm:mx-6 mt-2 px-3 py-2 rounded-xl bg-zinc-900/95 border border-zinc-800 flex items-center justify-between gap-2 shrink-0">
+            <div className="flex items-center gap-2 text-xs text-zinc-200 min-w-0">
               <AlertTriangle className="w-4 h-4 text-amber-400 shrink-0" />
               <span className="truncate">{gps.errorMessage}</span>
             </div>
-            <div className="flex items-center gap-2 shrink-0">
+            <div className="flex items-center gap-1.5 shrink-0">
               {gps.status !== 'unsupported' && (
                 <button
                   type="button"
                   onClick={gps.retryGps}
-                  className="min-h-[38px] px-3 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-xs font-semibold text-zinc-100 transition-colors whitespace-nowrap cursor-pointer"
+                  className="min-h-[36px] px-2.5 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-xs font-semibold text-zinc-100 transition-colors whitespace-nowrap cursor-pointer"
                 >
-                  Retry GPS
+                  Retry
                 </button>
               )}
               <button
                 type="button"
                 onClick={() => setIsSimulated(true)}
-                className="min-h-[38px] px-3 rounded-lg bg-amber-400 hover:bg-amber-300 text-xs font-semibold text-zinc-950 transition-colors whitespace-nowrap cursor-pointer"
+                className="min-h-[36px] px-2.5 rounded-lg bg-amber-400 hover:bg-amber-300 text-xs font-semibold text-zinc-950 transition-colors whitespace-nowrap cursor-pointer"
               >
-                Simulate Speed
+                Simulate
               </button>
             </div>
           </div>
         )}
 
-      {/* Main Full-Screen Cockpit Area */}
-      <main className="relative z-10 flex-1 w-full max-w-7xl mx-auto px-4 sm:px-6 py-3 sm:py-6 flex flex-col lg:grid lg:grid-cols-12 lg:gap-8 items-center justify-between lg:items-stretch">
-        {/* Primary Speedometer & Danger Stage */}
+      {/* Main Full-Screen Speedometer Stage */}
+      <main className="relative z-10 flex-1 min-h-0 w-full max-w-7xl mx-auto px-3 sm:px-6 py-2 sm:py-5 flex flex-col lg:grid lg:grid-cols-12 lg:gap-8 items-center justify-between lg:items-stretch">
+        {/* Dominant Giant Speedometer */}
         <section
           aria-label="Live speed and danger indicator"
-          className="w-full lg:col-span-7 flex flex-col items-center justify-center flex-1 py-1"
+          className="w-full flex-1 min-h-0 lg:col-span-8 flex flex-col items-center justify-center"
         >
           <DangerArcGauge
             speedMs={activeSpeedMs}
@@ -262,60 +261,89 @@ export default function App() {
           />
         </section>
 
-        {/* Secondary Rider Telemetry & Danger Physics */}
+        {/* Mobile single-line physics summary (minimal vertical footprint) */}
+        <div className="lg:hidden w-full max-w-2xl pt-2 pb-1 flex items-center justify-between gap-2 text-xs font-mono tabular-nums text-zinc-300 shrink-0">
+          <div>
+            <span className="text-zinc-500">Stop </span>
+            <span className="font-bold text-zinc-100">
+              {formatDistanceMeters(stoppingDistMeters, unit)}
+            </span>
+          </div>
+          <span className="text-zinc-700" aria-hidden="true">
+            ·
+          </span>
+          <div>
+            <span className="text-zinc-500">Drop </span>
+            <span
+              className={`font-bold ${
+                dropHeightMeters >= 20
+                  ? activeZone.textColorClass
+                  : 'text-zinc-100'
+              }`}
+            >
+              {formatDistanceMeters(dropHeightMeters, unit)}
+            </span>
+          </div>
+          <span className="text-zinc-700" aria-hidden="true">
+            ·
+          </span>
+          <div>
+            <span className="text-zinc-500">Peak </span>
+            <span className="font-bold text-zinc-100">
+              {peakSpeedDisplay} {unitLabel(unit)}
+            </span>
+          </div>
+        </div>
+
+        {/* Desktop / Landscape Right Telemetry Column */}
         <section
           aria-label="Impact physics and trip telemetry"
-          className="w-full lg:col-span-5 flex flex-col justify-center gap-3 sm:gap-4 mt-3 lg:mt-0"
+          className="hidden lg:flex lg:col-span-4 flex-col justify-center gap-4"
         >
-          {/* Mobile & Desktop Core Impact Physics Grid */}
-          <div className="grid grid-cols-3 lg:grid-cols-2 gap-2.5 sm:gap-3">
-            <div className="p-3 sm:p-4 rounded-2xl bg-zinc-900/75 border border-zinc-800/90">
-              <div className="text-[11px] sm:text-xs text-zinc-400">
-                Stopping Dist
-              </div>
-              <div className="font-mono text-lg sm:text-2xl font-bold tabular-nums text-zinc-100 mt-0.5">
+          <div className="grid grid-cols-2 gap-3">
+            <div className="p-4 rounded-2xl bg-zinc-900/75 border border-zinc-800/90">
+              <div className="text-xs text-zinc-400">Stopping Dist</div>
+              <div className="font-mono text-2xl font-bold tabular-nums text-zinc-100 mt-0.5">
                 {formatDistanceMeters(stoppingDistMeters, unit)}
               </div>
-              <div className="hidden sm:block text-[11px] text-zinc-500 mt-1">
+              <div className="text-[11px] text-zinc-500 mt-1">
                 1s reaction + 0.7g dry brake
               </div>
             </div>
 
-            <div className="p-3 sm:p-4 rounded-2xl bg-zinc-900/75 border border-zinc-800/90">
-              <div className="text-[11px] sm:text-xs text-zinc-400">
-                Impact Drop
-              </div>
+            <div className="p-4 rounded-2xl bg-zinc-900/75 border border-zinc-800/90">
+              <div className="text-xs text-zinc-400">Impact Drop</div>
               <div
-                className={`font-mono text-lg sm:text-2xl font-bold tabular-nums mt-0.5 ${
-                  dropHeightMeters >= 20 ? activeZone.textColorClass : 'text-zinc-100'
+                className={`font-mono text-2xl font-bold tabular-nums mt-0.5 ${
+                  dropHeightMeters >= 20
+                    ? activeZone.textColorClass
+                    : 'text-zinc-100'
                 }`}
               >
                 {formatDistanceMeters(dropHeightMeters, unit)}
               </div>
-              <div className="hidden sm:block text-[11px] text-zinc-500 mt-1">
+              <div className="text-[11px] text-zinc-500 mt-1">
                 {dropStories > 0
                   ? `~${dropStories} ${dropStories === 1 ? 'story' : 'stories'} freefall`
                   : 'Stationary impact'}
               </div>
             </div>
 
-            <div className="p-3 sm:p-4 rounded-2xl bg-zinc-900/75 border border-zinc-800/90 lg:col-span-2">
+            <div className="p-4 rounded-2xl bg-zinc-900/75 border border-zinc-800/90 col-span-2">
               <div className="flex items-center justify-between gap-2">
-                <span className="text-[11px] sm:text-xs text-zinc-400">
-                  Peak Speed
-                </span>
-                <span className="hidden lg:inline text-[11px] font-mono tabular-nums text-zinc-500">
+                <span className="text-xs text-zinc-400">Peak Speed</span>
+                <span className="text-[11px] font-mono tabular-nums text-zinc-500">
                   Avg {avgSpeedDisplay} {unitLabel(unit)} ·{' '}
                   {formatTripDistance(gps.tripDistanceMeters, unit)}
                 </span>
               </div>
-              <div className="font-mono text-lg sm:text-2xl font-bold tabular-nums text-zinc-100 mt-0.5">
+              <div className="font-mono text-2xl font-bold tabular-nums text-zinc-100 mt-0.5">
                 {peakSpeedDisplay}{' '}
                 <span className="text-xs font-normal text-zinc-400">
                   {unitLabel(unit)}
                 </span>
               </div>
-              <div className="hidden lg:block text-xs text-zinc-400 mt-1.5">
+              <div className="text-xs text-zinc-400 mt-1.5">
                 {energyRatioVs30 > 1
                   ? `Kinetic energy is ${energyRatioVs30.toFixed(1)}× higher than 30 km/h urban speed.`
                   : activeZone.fatalityNote}
@@ -323,8 +351,7 @@ export default function App() {
             </div>
           </div>
 
-          {/* Desktop-only Danger Spectrum Strip & Live Simulation Slider */}
-          <div className="hidden lg:flex flex-col gap-3 p-4 rounded-2xl bg-zinc-900/60 border border-zinc-800/90">
+          <div className="flex flex-col gap-3 p-4 rounded-2xl bg-zinc-900/60 border border-zinc-800/90">
             <div className="flex items-center justify-between">
               <span className="text-xs font-semibold text-zinc-300">
                 Danger Spectrum by Speed
@@ -394,48 +421,9 @@ export default function App() {
         </section>
       </main>
 
-      {/* Bottom Thumb-Zone Action Bar */}
-      <footer className="relative z-20 pb-safe px-4 sm:px-6 pt-2 border-t border-zinc-800/60 bg-[#090A0D]/80 backdrop-blur-md shrink-0">
-        <div className="max-w-7xl mx-auto flex items-center justify-between gap-2">
-          <button
-            type="button"
-            onClick={() => setDrawerOpen(true)}
-            className="min-h-[44px] px-4 rounded-xl bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 text-xs sm:text-sm font-medium text-zinc-100 flex items-center gap-2 transition-colors whitespace-nowrap shrink-0 cursor-pointer"
-          >
-            <SlidersHorizontal className="w-4 h-4 text-zinc-400" />
-            <span>Danger Guide</span>
-          </button>
-
-          <div className="flex items-center gap-2">
-            <button
-              type="button"
-              onClick={() => setIsSimulated((prev) => !prev)}
-              className={`min-h-[44px] px-4 rounded-xl text-xs sm:text-sm font-semibold transition-colors whitespace-nowrap shrink-0 cursor-pointer ${
-                isSimulated
-                  ? 'bg-amber-400 text-zinc-950 hover:bg-amber-300'
-                  : 'bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 text-zinc-200'
-              }`}
-            >
-              {isSimulated ? 'Live GPS' : 'Simulate'}
-            </button>
-
-            <button
-              type="button"
-              onClick={gps.resetTrip}
-              className="min-h-[44px] min-w-[44px] px-3.5 rounded-xl bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 text-xs sm:text-sm font-medium text-zinc-300 hover:text-zinc-100 flex items-center gap-1.5 transition-colors whitespace-nowrap shrink-0 cursor-pointer"
-              title="Reset peak speed and trip distance"
-              aria-label="Reset trip stats"
-            >
-              <RotateCcw className="w-4 h-4" />
-              <span className="hidden sm:inline">Reset</span>
-            </button>
-          </div>
-        </div>
-      </footer>
-
-      {/* Mobile Simulation Slider Bar when Simulate mode is active on small screens */}
+      {/* Mobile Simulation Slider Bar when Simulate mode is active */}
       {isSimulated && !drawerOpen && (
-        <div className="lg:hidden relative z-20 px-4 py-2.5 bg-zinc-950/95 border-t border-zinc-800">
+        <div className="lg:hidden relative z-20 px-4 py-2 bg-zinc-950/95 border-t border-zinc-800 shrink-0">
           <div className="flex items-center gap-3">
             <span className="text-[11px] font-medium text-amber-400 whitespace-nowrap">
               Test Speed
@@ -456,6 +444,45 @@ export default function App() {
           </div>
         </div>
       )}
+
+      {/* Compact Bottom Action Strip */}
+      <footer className="relative z-20 pb-safe px-3 sm:px-6 pt-1.5 border-t border-zinc-800/50 bg-[#090A0D]/75 backdrop-blur-md shrink-0">
+        <div className="max-w-7xl mx-auto flex items-center justify-between gap-2">
+          <button
+            type="button"
+            onClick={() => setDrawerOpen(true)}
+            className="min-h-[44px] px-3.5 rounded-xl bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 text-xs sm:text-sm font-medium text-zinc-100 flex items-center gap-2 transition-colors whitespace-nowrap shrink-0 cursor-pointer"
+          >
+            <SlidersHorizontal className="w-4 h-4 text-zinc-400" />
+            <span>Danger Guide</span>
+          </button>
+
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setIsSimulated((prev) => !prev)}
+              className={`min-h-[44px] px-3.5 rounded-xl text-xs sm:text-sm font-semibold transition-colors whitespace-nowrap shrink-0 cursor-pointer ${
+                isSimulated
+                  ? 'bg-amber-400 text-zinc-950 hover:bg-amber-300'
+                  : 'bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 text-zinc-200'
+              }`}
+            >
+              {isSimulated ? 'Live GPS' : 'Simulate'}
+            </button>
+
+            <button
+              type="button"
+              onClick={gps.resetTrip}
+              className="min-h-[44px] min-w-[44px] px-3 rounded-xl bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 text-xs sm:text-sm font-medium text-zinc-300 hover:text-zinc-100 flex items-center gap-1.5 transition-colors whitespace-nowrap shrink-0 cursor-pointer"
+              title="Reset peak speed and trip distance"
+              aria-label="Reset trip stats"
+            >
+              <RotateCcw className="w-4 h-4" />
+              <span className="hidden sm:inline">Reset</span>
+            </button>
+          </div>
+        </div>
+      </footer>
 
       {/* Danger Scale & Simulation Bottom Sheet / Drawer */}
       <DangerScaleDrawer
