@@ -1,4 +1,5 @@
 import React from 'react';
+import { Camera } from 'lucide-react';
 import {
   DANGER_ZONES,
   DangerZone,
@@ -14,6 +15,8 @@ interface DangerArcGaugeProps {
   zone: DangerZone;
   isSimulated: boolean;
   onOpenControls: () => void;
+  dashCamActive: boolean;
+  onOpenDashCam: () => void;
 }
 
 const MAX_KMH = 120;
@@ -35,6 +38,8 @@ export const DangerArcGauge: React.FC<DangerArcGaugeProps> = ({
   zone,
   isSimulated,
   onOpenControls,
+  dashCamActive,
+  onOpenDashCam,
 }) => {
   const currentKmh = Math.max(0, speedMs * 3.6);
   const displayValue = Math.round(msToUnit(speedMs, unit));
@@ -117,15 +122,39 @@ export const DangerArcGauge: React.FC<DangerArcGaugeProps> = ({
           {displayValue}
         </div>
 
-        <button
-          type="button"
-          onClick={() => onToggleUnit(unit === 'kmh' ? 'mph' : 'kmh')}
-          className="mt-3 sm:mt-4 min-h-[44px] px-6 rounded-xl bg-zinc-900/85 hover:bg-zinc-800 border border-zinc-800/90 font-display text-2xl sm:text-3xl font-semibold tracking-wide text-zinc-200 hover:text-white transition-colors cursor-pointer"
-          aria-label={`Speed unit ${unitLabel(unit)}, tap to switch`}
-          title="Tap to switch km/h or mph"
-        >
-          {unitLabel(unit)}
-        </button>
+        <div className="mt-3 sm:mt-4 flex items-center gap-2.5">
+          <button
+            type="button"
+            onClick={() => onToggleUnit(unit === 'kmh' ? 'mph' : 'kmh')}
+            className="min-h-[44px] px-6 rounded-xl bg-zinc-900/85 hover:bg-zinc-800 border border-zinc-800/90 font-display text-2xl sm:text-3xl font-semibold tracking-wide text-zinc-200 hover:text-white transition-colors cursor-pointer"
+            aria-label={`Speed unit ${unitLabel(unit)}, tap to switch`}
+            title="Tap to switch km/h or mph"
+          >
+            {unitLabel(unit)}
+          </button>
+
+          <button
+            type="button"
+            onClick={onOpenDashCam}
+            className={`min-h-[44px] min-w-[44px] px-3 rounded-xl border flex items-center justify-center transition-colors cursor-pointer ${
+              dashCamActive
+                ? 'bg-emerald-500/15 border-emerald-500/50 text-emerald-400 hover:bg-emerald-500/25'
+                : 'bg-zinc-900/85 border-zinc-800/90 text-zinc-300 hover:text-white hover:bg-zinc-800'
+            }`}
+            aria-label={
+              dashCamActive
+                ? 'Dash camera active, tap to adjust'
+                : 'Film motorbike dashboard to improve speed accuracy'
+            }
+            title={
+              dashCamActive
+                ? 'Dash Cam Fusion Active'
+                : 'Read dash speed with rear camera'
+            }
+          >
+            <Camera className="w-5 h-5" />
+          </button>
+        </div>
       </div>
 
       {/* Bottom Danger-by-Speed Banner (tap to open Guide & Controls) */}

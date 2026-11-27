@@ -1,9 +1,11 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Capacitor, registerPlugin } from '@capacitor/core';
 import { AlertTriangle } from 'lucide-react';
 import { useGpsSpeed } from './hooks/useGpsSpeed';
+import { useDashCamSpeed } from './hooks/useDashCamSpeed';
 import { DangerArcGauge } from './components/DangerArcGauge';
 import { DangerScaleDrawer } from './components/DangerScaleDrawer';
+import { DashCamModal } from './components/DashCamModal';
 import {
   SpeedUnit,
   getDangerZone,
@@ -14,6 +16,7 @@ import {
 const UNIT_STORAGE_KEY = 'motospeed_unit_pref';
 
 interface MotoHudNativePlugin {
+  ensureCameraPermission(): Promise<{ granted: boolean }>;
   startTracking(): Promise<void>;
   startIfPermitted(): Promise<{ active: boolean }>;
   stopTracking(): Promise<void>;
@@ -35,6 +38,7 @@ export default function App() {
 
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const [dashCamModalOpen, setDashCamModalOpen] = useState(false);
   const [isSimulated, setIsSimulated] = useState(false);
   const [simSpeedKmh, setSimSpeedKmh] = useState(64);
   const [nativeTrackingActive, setNativeTrackingActive] = useState(false);
@@ -42,6 +46,23 @@ export default function App() {
   const isAndroidApp = Capacitor.getPlatform() === 'android';
 
   const gps = useGpsSpeed();
+
+  const ensureAndroidCameraPermission = useCallback(async () => {
+    try {
+      const { granted } = await MotoHudNative.ensureCameraPermission();
+      return granted;
+    } catch {
+      return false;
+    }
+  }, []);
+
+  const dashCam = useDashCamSpeed({
+    isAndroidApp,
+    ensureAndroidCameraPermission,
+    gpsSpeedMs: gps.speedMs,
+    gpsActive: gps.status === 'active',
+    gpsAccuracyMeters: gps.accuracyMeters,
+  });
 
   useEffect(() => {
     if (!isAndroidApp) return;
@@ -102,7 +123,43 @@ export default function App() {
     }
   };
 
-  const activeSpeedMs = isSimulated ? simSpeedKmh / 3.6 : gps.speedMs;
+  const handleOpenDashCam = () => {
+    setDashCamModalOpen(true);
+    if (!dashCam.active && !dashCam.starting) {
+      void dashCam.startCamera();
+    }
+  };
+
+  // Fuse GPS + Rear Camera Dash OCR when camera is actively reading the dash
+  const activeSpeedMs = useMemo(() => {
+    if (isSimulated) {
+      return simSpeedKmh / 3.6;
+    }
+    if (dashCam.active && dashCam.dashSpeedKmh !== null) {
+      if (dashCam.dashSpeedKmh === 0) return 0;
+      const calibratedDashMs =
+        (dashCam.dashSpeedKmh * dashCam.calibrationRatio) / 3.6;
+      const gpsFresh =
+        gps.status === 'active' &&
+        gps.lastFixTime !== null &&
+        Date.now() - gps.lastFixTime < 3500;
+      if (gpsFresh) {
+        return 0.65 * calibratedDashMs + 0.35 * gps.speedMs;
+      }
+      return calibratedDashMs;
+    }
+    return gps.speedMs;
+  }, [
+    dashCam.active,
+    dashCam.calibrationRatio,
+    dashCam.dashSpeedKmh,
+    gps.lastFixTime,
+    gps.speedMs,
+    gps.status,
+    isSimulated,
+    simSpeedKmh,
+  ]);
+
   const activeZone = useMemo(
     () => getDangerZone(activeSpeedMs),
     [activeSpeedMs]
@@ -113,21 +170,29 @@ export default function App() {
 
   const gpsSummaryText = (() => {
     if (isSimulated) return 'Simulation Mode';
+    const camTag =
+      dashCam.active && dashCam.dashSpeedKmh !== null
+        ? ` · Dash Cam ${dashCam.dashSpeedKmh} km/h`
+        : dashCam.active
+        ? ' · Dash Cam Aiming'
+        : '';
     switch (gps.status) {
       case 'active':
-        return gps.accuracyMeters !== null
-          ? `GPS Active · ±${gps.accuracyMeters}m`
-          : 'GPS Active';
+        return `${
+          gps.accuracyMeters !== null
+            ? `GPS Active · ±${gps.accuracyMeters}m`
+            : 'GPS Active'
+        }${camTag}`;
       case 'requesting':
-        return 'Acquiring GPS…';
+        return `Acquiring GPS…${camTag}`;
       case 'timeout':
-        return 'Searching Satellites…';
+        return `Searching Satellites…${camTag}`;
       case 'denied':
-        return 'GPS Denied';
+        return `GPS Denied${camTag}`;
       case 'unavailable':
-        return 'GPS Unavailable';
+        return `GPS Unavailable${camTag}`;
       case 'unsupported':
-        return 'No GPS Hardware';
+        return `No GPS Hardware${camTag}`;
     }
   })();
 
@@ -174,6 +239,7 @@ export default function App() {
       )}
 
       {!isSimulated &&
+        !dashCam.active &&
         (gps.status === 'denied' ||
           gps.status === 'unavailable' ||
           gps.status === 'unsupported') && (
@@ -212,6 +278,8 @@ export default function App() {
           zone={activeZone}
           isSimulated={isSimulated}
           onOpenControls={() => setDrawerOpen(true)}
+          dashCamActive={dashCam.active}
+          onOpenDashCam={handleOpenDashCam}
         />
       </main>
 
@@ -267,6 +335,17 @@ export default function App() {
         isAndroidApp={isAndroidApp}
         nativeTrackingActive={nativeTrackingActive}
         onToggleNativeTracking={toggleNativeTracking}
+        dashCamActive={dashCam.active}
+        onOpenDashCam={handleOpenDashCam}
+      />
+
+      {/* Rear Camera Alignment & Dash Speed Fusion Modal */}
+      <DashCamModal
+        open={dashCamModalOpen}
+        onClose={() => setDashCamModalOpen(false)}
+        dashCam={dashCam}
+        unit={unit}
+        gpsSpeedMs={gps.speedMs}
       />
     </div>
   );

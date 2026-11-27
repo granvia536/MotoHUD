@@ -22,11 +22,35 @@ import com.getcapacitor.annotation.PermissionCallback;
                 Manifest.permission.ACCESS_FINE_LOCATION,
                 Manifest.permission.ACCESS_COARSE_LOCATION
             }
+        ),
+        @Permission(
+            alias = "camera",
+            strings = {
+                Manifest.permission.CAMERA
+            }
         )
     }
 )
 public class MotoHudPlugin extends Plugin {
     private static final String PREFS = "motohud_widget";
+
+    @PluginMethod
+    public void ensureCameraPermission(PluginCall call) {
+        if (getPermissionState("camera") == PermissionState.GRANTED) {
+            JSObject result = new JSObject();
+            result.put("granted", true);
+            call.resolve(result);
+            return;
+        }
+        requestPermissionForAlias("camera", call, "cameraPermissionCallback");
+    }
+
+    @PermissionCallback
+    private void cameraPermissionCallback(PluginCall call) {
+        JSObject result = new JSObject();
+        result.put("granted", getPermissionState("camera") == PermissionState.GRANTED);
+        call.resolve(result);
+    }
 
     @PluginMethod
     public void startTracking(PluginCall call) {

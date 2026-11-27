@@ -1,5 +1,5 @@
 import React from 'react';
-import { Maximize2, Minimize2, RotateCcw, Lock, Unlock, X } from 'lucide-react';
+import { Camera, Maximize2, Minimize2, RotateCcw, Lock, Unlock, X } from 'lucide-react';
 import {
   DANGER_ZONES,
   DangerZone,
@@ -35,6 +35,8 @@ interface DangerScaleDrawerProps {
   isAndroidApp: boolean;
   nativeTrackingActive: boolean;
   onToggleNativeTracking: () => void;
+  dashCamActive: boolean;
+  onOpenDashCam: () => void;
 }
 
 export const DangerScaleDrawer: React.FC<DangerScaleDrawerProps> = ({
@@ -59,6 +61,8 @@ export const DangerScaleDrawer: React.FC<DangerScaleDrawerProps> = ({
   isAndroidApp,
   nativeTrackingActive,
   onToggleNativeTracking,
+  dashCamActive,
+  onOpenDashCam,
 }) => {
   if (!open) return null;
 
@@ -118,6 +122,26 @@ export const DangerScaleDrawer: React.FC<DangerScaleDrawerProps> = ({
                 {nativeTrackingActive ? 'Stop Widget GPS' : 'Start Widget GPS'}
               </button>
             )}
+
+            <button
+              type="button"
+              onClick={() => {
+                onClose();
+                onOpenDashCam();
+              }}
+              className={`col-span-2 min-h-[46px] px-4 rounded-xl border text-sm font-semibold flex items-center justify-center gap-2 transition-colors cursor-pointer ${
+                dashCamActive
+                  ? 'bg-emerald-500/15 border-emerald-500/45 text-emerald-300'
+                  : 'bg-zinc-900 hover:bg-zinc-800 border-zinc-800 text-zinc-100'
+              }`}
+            >
+              <Camera className="w-4 h-4" />
+              <span>
+                {dashCamActive
+                  ? 'Dash Cam Fusion Active (Adjust)'
+                  : 'Film Bike Dash for Speed Fusion'}
+              </span>
+            </button>
 
             <button
               type="button"

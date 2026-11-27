@@ -1,6 +1,6 @@
 {
   "name": "MotoSpeed HUD",
   "description": "Full-screen high-precision GPS motorcycle speedometer with speed-to-fatality danger color zones, stopping distance, and impact severity.",
-  "requestFramePermissions": ["geolocation"],
+  "requestFramePermissions": ["geolocation", "camera"],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }
